@@ -44,6 +44,8 @@ export function formatBytes(n: number): string {
 export const register: Register = on => {
   let busy = false
   let canDrawImages = false
+  // カードのパス表示でホームを ~ に縮める（利用者名を画面に出さない）
+  let homeDir = ''
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)
@@ -63,6 +65,7 @@ export const register: Register = on => {
       // cwd は途中で変わりうるので、一時フォルダ内でセッション id を持つ場所を探す
       const imagesDir = (await findImagesDir($, tmp, id)) ?? `${tmp}/${sessionSlug(e.cwd)}/${id}/images`
       const home = (await $.env.get('HOME')) ?? ''
+      homeDir = home
 
       // 所有者専用で作り、シンボリックリンクにすり替えられていないことを確かめてから使う
       const thumbDir = `${tmp}/${THUMB_SUBDIR}`
@@ -143,7 +146,7 @@ export const register: Register = on => {
               <Text dimColor>
                 {t.width}× {t.height} px · {formatBytes(t.bytes)}
               </Text>
-              {t.path ? <Text dimColor>{t.path}</Text> : null}
+              {t.path ? <Text dimColor>{abbreviateHome(t.path, homeDir)}</Text> : null}
             </Box>
           )
         })}
@@ -164,6 +167,12 @@ async function findImagesDir($: EngineInterface, tmp: string, id: string): Promi
     // 読めなければ cwd からの推定に任せる
   }
   return null
+}
+
+export function abbreviateHome(path: string, home: string): string {
+  if (!home) return path
+  if (path === home) return '~'
+  return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path
 }
 
 const failures = new Map<number, number>()

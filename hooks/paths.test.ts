@@ -1,6 +1,14 @@
 import { expect, test } from 'claude-code/testing'
 
-import { formatBytes, imageTagsIn, sessionSlug } from './register'
+import { abbreviateHome, formatBytes, imageTagsIn, sessionSlug } from './register'
+
+test('ホームを ~ に縮める', () => {
+  expect(abbreviateHome('/Users/alice/Downloads/a.png', '/Users/alice')).toBe('~/Downloads/a.png')
+  expect(abbreviateHome('/Users/alice', '/Users/alice')).toBe('~')
+  // 別ユーザーや前方一致だけのパスは縮めない
+  expect(abbreviateHome('/Users/alicee/a.png', '/Users/alice')).toBe('/Users/alicee/a.png')
+  expect(abbreviateHome('/tmp/a.png', '')).toBe('/tmp/a.png')
+})
 
 test('印 1 つ', () => {
   expect(imageTagsIn('[Image #1] これ何？')).toEqual([1])

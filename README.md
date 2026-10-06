@@ -10,7 +10,7 @@ When dropping an image into the Claude Code prompt, the `[Image #1]` marker alon
 │  (thumbnail)                 │
 │  201.jpg                     │
 │  500× 500 px · 105 KB        │
-│  /Users/you/Downloads/201.jpg│
+│  ~/Downloads/201.jpg         │
 ╰──────────────────────────────╯
 ❯ [Image #1]
 ```
@@ -46,7 +46,7 @@ Takes effect starting from the next Claude Code launch.
 
 - Dropping an image displays `#n filename` chips right above the prompt.
 - Clicking a chip opens the card, and clicking again closes it. It also opens on hover in environments where the terminal passes mouse movement events.
-- Card contents: Thumbnail (kitty-compatible terminals only), filename, `width× height px`, file size in bytes, and absolute path of the original file.
+- Card contents: Thumbnail (kitty-compatible terminals only), filename, `width× height px`, file size in bytes, and the path of the original file (the home directory is shown as `~`).
 - Submitting the prompt or deleting the `[Image #n]` marker removes the chips and card.
 
 ## Supported Image Formats
