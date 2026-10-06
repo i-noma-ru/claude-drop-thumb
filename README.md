@@ -1,4 +1,4 @@
-# drop-thumb
+# claude-drop-thumb
 
 A Claude Code mod that shows a `#1 filename` chip above the prompt for each dropped image, with a card (filename, pixel size, bytes, original path) and, on kitty-graphics terminals, a thumbnail.
 The `[Image #1]` marker alone doesn't tell you what you pasted, so this mod puts the file's name and details one click or hover away.
@@ -37,14 +37,14 @@ On terminals without kitty graphics, the same card appears without the thumbnail
 From the marketplace:
 
 ```bash
-claude plugin marketplace add i-noma-ru/drop-thumb
-claude plugin install drop-thumb@drop-thumb
+claude plugin marketplace add i-noma-ru/claude-drop-thumb
+claude plugin install drop-thumb@claude-drop-thumb
 ```
 
 Try it once:
 
 ```bash
-claude --plugin-dir /path/to/drop-thumb
+claude --plugin-dir /path/to/claude-drop-thumb
 ```
 
 Load every time: Add to `env` in `~/.claude/settings.json` (multiple directories separated by `:`).
@@ -52,7 +52,7 @@ Load every time: Add to `env` in `~/.claude/settings.json` (multiple directories
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/drop-thumb"
+    "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/claude-drop-thumb"
   }
 }
 ```

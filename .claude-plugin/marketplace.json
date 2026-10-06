@@ -1,5 +1,5 @@
 {
-  "name": "drop-thumb",
+  "name": "claude-drop-thumb",
   "metadata": {
     "description": "Claude Code mod: a chip and a card (thumbnail, file name, size, original path) for images dropped onto the prompt."
   },
@@ -12,7 +12,7 @@
       "description": "Shows a chip and a card (thumbnail, file name, size, original path) above the prompt for each image dropped onto it. macOS only.",
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/i-noma-ru/drop-thumb"
+      "homepage": "https://github.com/i-noma-ru/claude-drop-thumb"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# drop-thumb
+# claude-drop-thumb
 
 ドロップした画像ごとに「#1 ファイル名」のチップをプロンプトの直上に出し、ファイル名・ピクセル寸法・ファイルサイズ・元のパスのカードを開ける Claude Code の mod です。kitty 画像に対応した端末ではサムネイルも出します。
 `[Image #1]` の表示だけでは何を貼ったか分からないので、クリックかホバー 1 回でファイルの名前と詳細を確かめられます。
@@ -39,14 +39,14 @@ kitty 画像に対応しない端末では、同じカードがサムネイル�
 マーケットプレイスから入れる場合:
 
 ```bash
-claude plugin marketplace add i-noma-ru/drop-thumb
-claude plugin install drop-thumb@drop-thumb
+claude plugin marketplace add i-noma-ru/claude-drop-thumb
+claude plugin install drop-thumb@claude-drop-thumb
 ```
 
 一時的に試す場合:
 
 ```bash
-claude --plugin-dir /path/to/drop-thumb
+claude --plugin-dir /path/to/claude-drop-thumb
 ```
 
 常時有効にする場合: `~/.claude/settings.json` の `env` に追加します（複数ディレクトリを指定する場合は `:` 区切り）。
@@ -54,7 +54,7 @@ claude --plugin-dir /path/to/drop-thumb
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/drop-thumb"
+    "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/claude-drop-thumb"
   }
 }
 ```
