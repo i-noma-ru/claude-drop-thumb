@@ -1,8 +1,21 @@
 # drop-thumb
 
+A Claude Code mod that shows a `#1 filename` chip above the prompt for each dropped image, with a card (filename, pixel size, bytes, original path) and, on kitty-graphics terminals, a thumbnail.
+The `[Image #1]` marker alone doesn't tell you what you pasted, so this mod puts the file's name and details one click or hover away.
+
 [日本語](README.ja.md)
 
-When dropping an image into the Claude Code prompt, the `[Image #1]` marker alone doesn't tell you what you pasted. This mod displays a **`#1 filename` chip** right above the prompt, and clicking (or hovering over) it opens a card showing the **filename, dimensions, file size, and original path**. On terminals supporting the kitty graphics protocol (Ghostty / kitty), it also displays a **thumbnail**.
+## When to use
+
+- When you drop several images into one prompt and need to tell `[Image #1]` from `[Image #2]` before you send.
+- When you want to check the dimensions, file size, or original path of a dropped image without leaving the prompt.
+- When you use Ghostty or kitty and want a thumbnail of each dropped image right above the prompt.
+
+Not for you if you are on Linux or Windows (the mod runs `sips`, `mdfind`, and `cmp`, which are macOS tools), or if your Claude Code is older than v2.1.287.
+
+## What it looks like
+
+In Ghostty, dropping an image shows the chip; hovering over or clicking it opens the card with the thumbnail:
 
 <img src="assets/demo-ghostty.gif" width="470" alt="Dropping an image, then hovering and clicking the chip to open the card, in Ghostty">
 
@@ -19,7 +32,7 @@ On terminals without kitty graphics, the same card appears without the thumbnail
 ❯ [Image #1]
 ```
 
-## Installation
+## Install
 
 From the marketplace:
 
@@ -46,6 +59,21 @@ Load every time: Add to `env` in `~/.claude/settings.json` (multiple directories
 
 Takes effect starting from the next Claude Code launch.
 
+## Requirements
+
+- Claude Code v2.1.287 or later (mods support; a mod is a kind of Claude Code plugin, and commands and settings call it `plugin`)
+- macOS (uses `sips`, `mdfind`, and `cmp`; Linux / Windows not supported)
+
+## Supported Terminals
+
+| Terminal | Chip / Card | Thumbnail |
+| --- | --- | --- |
+| Ghostty, kitty | Shown | Shown |
+| Others (Terminal.app, iTerm2, Orca, etc.) | Shown | Not shown (text info only) |
+
+Thumbnails are rendered using Claude Code's `Image` element. Because Claude Code renders images only when the terminal name is `kitty` or `ghostty`, this mod is designed not to display images on other terminals.
+Orca (an Electron-based terminal app built on xterm.js) does not interpret the kitty protocol's Unicode placeholder method, so forcing images via `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` will result in broken rendering. Not recommended.
+
 ## Behavior
 
 - Dropping an image displays `#n filename` chips right above the prompt.
@@ -58,26 +86,11 @@ Takes effect starting from the next Claude Code launch.
 PNG, JPEG, GIF, WebP, BMP.
 Follows the extensions that Claude Code itself accepts as "images" in the prompt (formats like HEIC, TIFF, and SVG do not become `[Image #n]` in the first place). For GIFs, only the first frame is displayed as a thumbnail.
 
-## Supported Terminals
-
-| Terminal | Chip / Card | Thumbnail |
-| --- | --- | --- |
-| Ghostty, kitty | Shown | Shown |
-| Others (Terminal.app, iTerm2, Orca, etc.) | Shown | Not shown (text info only) |
-
-Thumbnails are rendered using Claude Code's `Image` element. Because Claude Code renders images only when the terminal name is `kitty` or `ghostty`, this mod is designed not to display images on other terminals.
-Orca (an Electron-based terminal app built on xterm.js) does not interpret the kitty protocol's Unicode placeholder method, so forcing images via `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` will result in broken rendering. Not recommended.
-
 ## How It Works
 
 1. Claude Code saves dropped images to a temporary directory `<CLAUDE_CODE_TMPDIR or /tmp/claude-<uid>>/<project>/<session id>/images/<n>.<ext>` and places only an `[Image #n]` marker in the prompt. Because dropping does not trigger an edit event, the mod inspects the prompt every 200 ms to detect markers.
 2. Detected images are downscaled to 512 px PNGs using `sips` (built into macOS) and passed to the `Image` element as base64.
 3. Because the saved image has identical bytes to the original file, the mod queries Spotlight (`mdfind`) for files of the same size and compares contents with `cmp` to determine the original path. If Spotlight is unavailable, it searches `~/Downloads`, `~/Desktop`, `~/Pictures`, and `~/Documents` using `find`.
-
-## Requirements
-
-- Claude Code v2.1.287 or later (mods support; a mod is a kind of Claude Code plugin, and commands and settings call it `plugin`)
-- macOS (uses `sips`, `mdfind`, and `cmp`; Linux / Windows not supported)
 
 ## Privacy & Security
 
