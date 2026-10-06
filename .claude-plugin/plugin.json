@@ -1,6 +1,6 @@
 {
   "name": "drop-thumb",
   "version": "0.1.0",
-  "description": "プロンプト欄へドロップした画像ファイルのサムネイルを、プロンプト直上の帯に表示する",
+  "description": "Shows a chip and a card (thumbnail, file name, size, original path) above the prompt for each image dropped onto it",
   "types": "./types/index.d.ts"
 }

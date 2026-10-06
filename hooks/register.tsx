@@ -114,7 +114,7 @@ export const register: Register = on => {
               <Button
                 plain
                 dimColor={opened !== t.n}
-                label={`#${t.n} ${t.name ?? '(貼り付け画像)'}`}
+                label={`#${t.n} ${t.name ?? '(pasted image)'}`}
                 hover={{ scope: `card${t.n}` }}
                 onPress={() => update($, open, prev => (prev === t.n ? null : t.n))}
               />
@@ -123,7 +123,7 @@ export const register: Register = on => {
         </Box>
         {list.map(t => {
           const rows = Math.max(1, Math.min(maxRows, Math.ceil((COLUMNS * t.height * CELL_ASPECT) / t.width)))
-          const label = t.name ?? '(貼り付け画像)'
+          const label = t.name ?? '(pasted image)'
           const pinned = opened === t.n
           return (
             <Box
