@@ -4,7 +4,7 @@
 
 When dropping an image into the Claude Code prompt, the `[Image #1]` marker alone doesn't tell you what you pasted. This mod displays a **`#1 filename` chip** right above the prompt, and clicking (or hovering over) it opens a card showing the **filename, dimensions, file size, and original path**. On terminals supporting the kitty graphics protocol (Ghostty / kitty), it also displays a **thumbnail**.
 
-<img src="assets/card-ghostty.png" width="470" alt="The chip and the card with a thumbnail, shown in Ghostty">
+<img src="assets/demo-ghostty.gif" width="470" alt="Dropping an image, then hovering and clicking the chip to open the card, in Ghostty">
 
 On terminals without kitty graphics, the same card appears without the thumbnail:
 

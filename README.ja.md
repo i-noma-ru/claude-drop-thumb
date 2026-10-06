@@ -6,7 +6,7 @@ Claude Code のプロンプト欄に画像をドロップした際、`[Image #1]
 
 *A Claude Code mod that shows a chip (`#1 filename`) above the prompt for each dropped image, with a click/hover card (filename, pixel size, bytes, original path, and a thumbnail on kitty-graphics terminals).*
 
-<img src="assets/card-ghostty.png" width="470" alt="Ghostty でのチップとサムネイル付きカード">
+<img src="assets/demo-ghostty.gif" width="470" alt="Ghostty で画像をドロップし、チップにホバー・クリックしてカードを開くところ">
 
 kitty 画像に対応しない端末では、同じカードがサムネイル抜きで表示される:
 
