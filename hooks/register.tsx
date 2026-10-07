@@ -163,12 +163,12 @@ async function findOriginal($: EngineInterface, cached: string, bytes: number, h
 }
 
 function hash(s: string): string {
-  let h = 2166136261
+  let acc = 2166136261
   for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
+    acc ^= s.charCodeAt(i)
+    acc = Math.imul(acc, 16777619) >>> 0
   }
-  return h.toString(16)
+  return acc.toString(16)
 }
 
 export const register: Register = on => {
