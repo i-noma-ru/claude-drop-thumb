@@ -94,6 +94,25 @@ Claude Code 本体がプロンプトで「画像」として受け付ける拡�
 2. 検知した画像を `sips`（macOS 標準）で 512 px の PNG に縮小し、base64 エンコードして `Image` 要素に渡します。
 3. 保存された画像は元ファイルと同一のバイト列であるため、Spotlight（`mdfind`）で同一ファイルサイズの候補を検索し、`cmp` で内容を比較して元のパスを特定します。Spotlight が利用できない環境では、`~/Downloads`、`~/Desktop`、`~/Pictures`、`~/Documents` を `find` で探します。
 
+## 実行するもの・読むもの・書くもの・送るもの
+
+審査のために、このプラグインが実行・参照するものを全部挙げます。マシンの外へは何も出ず、プロンプトの送信や書き換えもしません。
+
+**実行するコマンド（すべて macOS 標準。引数は固定で、渡すのはローカルのパスだけ）:**
+
+- `id -u` — `CLAUDE_CODE_TMPDIR` が無いときだけ。`/tmp/claude-<uid>` のパスを組むため。
+- `mkdir -m 700 -p <thumbDir>` と `test -d <thumbDir> -a ! -L <thumbDir>` — 所有者専用のサムネイル置き場を作って確かめる。
+- `sips -s format png -Z 512 <画像> --out <サムネイル>` と `sips -g pixelWidth -g pixelHeight <画像>` — 縮小と寸法の取得。
+- `mdfind "kMDItemFSSize == <バイト数>"` — 同じサイズのファイルを Spotlight に聞く（3 秒で打ち切り）。
+- `find ~/Downloads ~/Desktop ~/Pictures ~/Documents -maxdepth 2 -type f -size <バイト数>c` — Spotlight で見つからないときの予備（3 秒で打ち切り）。
+- `cmp -s <一時ファイル> <候補>` — 中身の比較。候補は最大 5 件。
+
+**読むもの:** プロンプト欄の文字（`[Image #n]` を探すため）、Claude Code の一時フォルダにあるドロップ画像、自分が書いたサムネイル、環境変数 `CLAUDE_CODE_TMPDIR`・`HOME`・`TERM_PROGRAM`。`cmp` の段階で、同じサイズの候補ファイル最大 5 件の中身を読みます。
+
+**書くもの:** Claude Code のユーザー固有一時フォルダ内の `drop-thumb/`（`0700`）に置く 512 px の PNG サムネイルだけ。
+
+**送るもの:** ありません。`prompt.submit` をフックするのは送信時に自分のチップを消すためで、モデルの呼び出しもプロンプトの送信・編集もしません。
+
 ## プライバシーと安全性
 
 外部へのネットワーク通信は一切行いません。読むのは、Claude Code の一時フォルダにある画像と、サイズが一致した候補ファイルの中身（元ファイルかどうかを比べるため）だけです。書くのは、Claude Code のユーザー固有一時フォルダ（パーミッション `0700` で所有者だけが開ける）の中の `drop-thumb/` に作るサムネイルだけで、共有の `/tmp` 直下には書きません。`claude plugin validate <フォルダ>` を実行すると、フックするイベントと呼び出す API の一覧を確認できます。

@@ -92,6 +92,25 @@ Follows the extensions that Claude Code itself accepts as "images" in the prompt
 2. Detected images are downscaled to 512 px PNGs using `sips` (built into macOS) and passed to the `Image` element as base64.
 3. Because the saved image has identical bytes to the original file, the mod queries Spotlight (`mdfind`) for files of the same size and compares contents with `cmp` to determine the original path. If Spotlight is unavailable, it searches `~/Downloads`, `~/Desktop`, `~/Pictures`, and `~/Documents` using `find`.
 
+## What the plugin runs, reads, writes, and submits
+
+This section lists everything the plugin executes and touches, for review. Nothing leaves the machine, and the plugin never submits a prompt or puts text into the prompt.
+
+**Commands it runs (all built into macOS, always with fixed arguments and local paths):**
+
+- `id -u` — only when `CLAUDE_CODE_TMPDIR` is not set, to build the `/tmp/claude-<uid>` path.
+- `mkdir -m 700 -p <thumbDir>` and `test -d <thumbDir> -a ! -L <thumbDir>` — create and verify the owner-only thumbnail folder.
+- `sips -s format png -Z 512 <image> --out <thumb>` and `sips -g pixelWidth -g pixelHeight <image>` — downscale the dropped image and read its dimensions.
+- `mdfind "kMDItemFSSize == <bytes>"` — ask Spotlight for files of the same size (3 s timeout).
+- `find ~/Downloads ~/Desktop ~/Pictures ~/Documents -maxdepth 2 -type f -size <bytes>c` — fallback when Spotlight returns nothing (3 s timeout).
+- `cmp -s <cached> <candidate>` — compare bytes, for at most 5 candidates.
+
+**What it reads:** the prompt text (to find `[Image #n]` markers), the dropped images in Claude Code's temporary directory, the thumbnails it wrote, and the environment variables `CLAUDE_CODE_TMPDIR`, `HOME`, and `TERM_PROGRAM`. The `cmp` step reads the bytes of up to 5 same-sized candidate files to tell which one is the original.
+
+**What it writes:** 512 px PNG thumbnails under `drop-thumb/` inside Claude Code's user-specific temporary directory (mode `0700`). Nothing else.
+
+**What it submits:** nothing. The plugin hooks `prompt.submit` only to clear its own chips when you send a prompt; it never calls the model and never submits or edits a prompt.
+
 ## Privacy & Security
 
 No network communication is performed. The mod only reads images in Claude Code's temporary directory and the contents of candidate files with matching sizes (for comparison). It only writes thumbnails placed in `drop-thumb/` inside Claude Code's user-specific temporary directory (`0700`, readable only by the owner). It never writes directly to the shared `/tmp` root. Running `claude plugin validate <directory>` lets you inspect the list of hooked events and invoked APIs.

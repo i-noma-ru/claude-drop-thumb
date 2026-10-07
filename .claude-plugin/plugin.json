@@ -1,6 +1,14 @@
 {
   "name": "drop-thumb",
-  "version": "0.1.0",
-  "description": "Shows a chip and a card (thumbnail, file name, size, original path) above the prompt for each image dropped onto it",
+  "version": "0.1.1",
+  "description": "Shows a chip and a card (thumbnail, file name, size, original path) above the prompt for each image dropped onto it. macOS only.",
+  "author": {
+    "name": "i-noma-ru",
+    "url": "https://github.com/i-noma-ru"
+  },
+  "homepage": "https://github.com/i-noma-ru/claude-drop-thumb",
+  "repository": "https://github.com/i-noma-ru/claude-drop-thumb",
+  "license": "MIT",
+  "keywords": ["claude-code", "mod", "image", "thumbnail", "macos"],
   "types": "./types/index.d.ts"
 }
