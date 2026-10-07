@@ -41,120 +41,6 @@ export function formatBytes(n: number): string {
   return `${n} B`
 }
 
-export const register: Register = on => {
-  let busy = false
-  let canDrawImages = false
-  // カードのパス表示でホームを ~ に縮める（利用者名を画面に出さない）
-  let homeDir = ''
-
-  on('session.start', async ($, e, next) => {
-    const started = await next(e)
-    if (e.surface === null) return started
-
-    try {
-      const term = ((await $.env.get('TERM_PROGRAM')) ?? '').toLowerCase()
-      canDrawImages = IMAGE_TERMINALS.some(t => term.startsWith(t))
-
-      // 既定は /tmp/claude-<uid>（Orca は CLAUDE_CODE_TMPDIR で同じ場所を渡してくる）
-      let tmp = await $.env.get('CLAUDE_CODE_TMPDIR')
-      if (!tmp) {
-        const uid = await $.process.run(['id', '-u'])
-        tmp = `/tmp/claude-${uid.stdout.trim()}`
-      }
-      const id = await $.session.id()
-      // cwd は途中で変わりうるので、一時フォルダ内でセッション id を持つ場所を探す
-      const imagesDir = (await findImagesDir($, tmp, id)) ?? `${tmp}/${sessionSlug(e.cwd)}/${id}/images`
-      const home = (await $.env.get('HOME')) ?? ''
-      homeDir = home
-
-      // 所有者専用で作り、シンボリックリンクにすり替えられていないことを確かめてから使う
-      const thumbDir = `${tmp}/${THUMB_SUBDIR}`
-      await $.process.run(['mkdir', '-m', '700', '-p', thumbDir])
-      const check = await $.process.run(['test', '-d', thumbDir, '-a', '!', '-L', thumbDir])
-      if (check.exitCode !== 0) return started
-
-      $.clock.every(POLL_MS, () => {
-        if (busy) return
-        busy = true
-        void poll($, imagesDir, thumbDir, home)
-          .catch(() => {})
-          .finally(() => {
-            busy = false
-          })
-      })
-    } catch {
-      // 置き場が分からなければ何もしない
-    }
-    return started
-  })
-
-  on('prompt.submit', async ($, e, next) => {
-    // 送信は止めない: 片付けに失敗しても next へ進む
-    await update($, thumbs, () => []).catch(() => {})
-    await update($, open, () => null).catch(() => {})
-    return next(e)
-  })
-
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const list = await read($, thumbs)
-    if (e.props.hasSurvey || list.length === 0) {
-      return next(e)
-    }
-
-    const ui = $.ui.resolve(e)
-    const { Box, Button, Text } = ui
-    const Image = 'Image' in ui && canDrawImages ? ui.Image : null
-    const maxRows = Math.max(1, Math.min(10, e.props.maxRows - 3))
-    const opened = await read($, open)
-
-    // 1 行目: チップの列（クリックでカードを固定／解除）。2 行目以降: カード。
-    // カードは帯の中（流れの中）に出す。帯の外（上）に置くと領域で切り取られて見えない。
-    return (
-      <Box flexDirection="column">
-        <Box>
-          {list.map(t => (
-            <Box key={`chip${t.n}`} marginRight={2}>
-              <Button
-                plain
-                dimColor={opened !== t.n}
-                label={`#${t.n} ${t.name ?? '(pasted image)'}`}
-                hover={{ scope: `card${t.n}` }}
-                onPress={() => update($, open, prev => (prev === t.n ? null : t.n))}
-              />
-            </Box>
-          ))}
-        </Box>
-        {list.map(t => {
-          const rows = Math.max(1, Math.min(maxRows, Math.ceil((COLUMNS * t.height * CELL_ASPECT) / t.width)))
-          const label = t.name ?? '(pasted image)'
-          const pinned = opened === t.n
-          return (
-            <Box
-              key={`card${t.n}`}
-              display={pinned ? 'flex' : 'none'}
-              hover={{ scope: `card${t.n}`, display: 'flex' }}
-              flexDirection="column"
-              alignSelf="flex-start"
-              borderStyle="round"
-              borderDimColor
-              paddingX={1}
-            >
-              {Image ? (
-                <Image key={`img${t.n}`} source={{ png: t.png }} columns={COLUMNS} rows={rows} alt={label} />
-              ) : null}
-              <Text>{label}</Text>
-              <Text dimColor>
-                {t.width}× {t.height} px · {formatBytes(t.bytes)}
-              </Text>
-              {t.path ? <Text dimColor>{abbreviateHome(t.path, homeDir)}</Text> : null}
-            </Box>
-          )
-        })}
-      </Box>
-    )
-  })
-}
-
 async function findImagesDir($: EngineInterface, tmp: string, id: string): Promise<string | null> {
   try {
     const entries = await $.fs.list(tmp)
@@ -283,4 +169,118 @@ function hash(s: string): string {
     h = Math.imul(h, 16777619) >>> 0
   }
   return h.toString(16)
+}
+
+export const register: Register = on => {
+  let busy = false
+  let canDrawImages = false
+  // カードのパス表示でホームを ~ に縮める（利用者名を画面に出さない）
+  let homeDir = ''
+
+  on('session.start', async ($, e, next) => {
+    const started = await next(e)
+    if (e.surface === null) return started
+
+    try {
+      const term = ((await $.env.get('TERM_PROGRAM')) ?? '').toLowerCase()
+      canDrawImages = IMAGE_TERMINALS.some(t => term.startsWith(t))
+
+      // 既定は /tmp/claude-<uid>（Orca は CLAUDE_CODE_TMPDIR で同じ場所を渡してくる）
+      let tmp = await $.env.get('CLAUDE_CODE_TMPDIR')
+      if (!tmp) {
+        const uid = await $.process.run(['id', '-u'])
+        tmp = `/tmp/claude-${uid.stdout.trim()}`
+      }
+      const id = await $.session.id()
+      // cwd は途中で変わりうるので、一時フォルダ内でセッション id を持つ場所を探す
+      const imagesDir = (await findImagesDir($, tmp, id)) ?? `${tmp}/${sessionSlug(e.cwd)}/${id}/images`
+      const home = (await $.env.get('HOME')) ?? ''
+      homeDir = home
+
+      // 所有者専用で作り、シンボリックリンクにすり替えられていないことを確かめてから使う
+      const thumbDir = `${tmp}/${THUMB_SUBDIR}`
+      await $.process.run(['mkdir', '-m', '700', '-p', thumbDir])
+      const check = await $.process.run(['test', '-d', thumbDir, '-a', '!', '-L', thumbDir])
+      if (check.exitCode !== 0) return started
+
+      $.clock.every(POLL_MS, () => {
+        if (busy) return
+        busy = true
+        void poll($, imagesDir, thumbDir, home)
+          .catch(() => {})
+          .finally(() => {
+            busy = false
+          })
+      })
+    } catch {
+      // 置き場が分からなければ何もしない
+    }
+    return started
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    // 送信は止めない: 片付けに失敗しても next へ進む
+    await update($, thumbs, () => []).catch(() => {})
+    await update($, open, () => null).catch(() => {})
+    return next(e)
+  })
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const list = await read($, thumbs)
+    if (e.props.hasSurvey || list.length === 0) {
+      return next(e)
+    }
+
+    const ui = $.ui.resolve(e)
+    const { Box, Button, Text } = ui
+    const Image = 'Image' in ui && canDrawImages ? ui.Image : null
+    const maxRows = Math.max(1, Math.min(10, e.props.maxRows - 3))
+    const opened = await read($, open)
+
+    // 1 行目: チップの列（クリックでカードを固定／解除）。2 行目以降: カード。
+    // カードは帯の中（流れの中）に出す。帯の外（上）に置くと領域で切り取られて見えない。
+    return (
+      <Box flexDirection="column">
+        <Box>
+          {list.map(t => (
+            <Box key={`chip${t.n}`} marginRight={2}>
+              <Button
+                plain
+                dimColor={opened !== t.n}
+                label={`#${t.n} ${t.name ?? '(pasted image)'}`}
+                hover={{ scope: `card${t.n}` }}
+                onPress={() => update($, open, prev => (prev === t.n ? null : t.n))}
+              />
+            </Box>
+          ))}
+        </Box>
+        {list.map(t => {
+          const rows = Math.max(1, Math.min(maxRows, Math.ceil((COLUMNS * t.height * CELL_ASPECT) / t.width)))
+          const label = t.name ?? '(pasted image)'
+          const pinned = opened === t.n
+          return (
+            <Box
+              key={`card${t.n}`}
+              display={pinned ? 'flex' : 'none'}
+              hover={{ scope: `card${t.n}`, display: 'flex' }}
+              flexDirection="column"
+              alignSelf="flex-start"
+              borderStyle="round"
+              borderDimColor
+              paddingX={1}
+            >
+              {Image ? (
+                <Image key={`img${t.n}`} source={{ png: t.png }} columns={COLUMNS} rows={rows} alt={label} />
+              ) : null}
+              <Text>{label}</Text>
+              <Text dimColor>
+                {t.width}× {t.height} px · {formatBytes(t.bytes)}
+              </Text>
+              {t.path ? <Text dimColor>{abbreviateHome(t.path, homeDir)}</Text> : null}
+            </Box>
+          )
+        })}
+      </Box>
+    )
+  })
 }
