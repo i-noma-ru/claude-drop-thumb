@@ -47,7 +47,7 @@ Try it once:
 claude --plugin-dir /path/to/claude-drop-thumb
 ```
 
-Load every time: Add to `env` in `~/.claude/settings.json` (multiple directories separated by `:`).
+Load every time: Add to `env` in `~/.claude/settings.json` (multiple directories separated by `:`). Each entry can be the plugin folder itself, as below, or a folder that contains plugin folders (both confirmed in 2.1.292).
 
 ```json
 {

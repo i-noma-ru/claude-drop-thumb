@@ -49,7 +49,7 @@ claude plugin install drop-thumb@claude-drop-thumb
 claude --plugin-dir /path/to/claude-drop-thumb
 ```
 
-常時有効にする場合: `~/.claude/settings.json` の `env` に追加します（複数ディレクトリを指定する場合は `:` 区切り）。
+常時有効にする場合: `~/.claude/settings.json` の `env` に追加します（複数ディレクトリを指定する場合は `:` 区切り）。各項目は、下のようにプラグインのフォルダそのものでも、プラグインのフォルダを入れた親フォルダでもかまいません（2.1.292 で両方を確認）。
 
 ```json
 {
