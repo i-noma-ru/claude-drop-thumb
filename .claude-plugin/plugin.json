@@ -1,6 +1,6 @@
 {
   "name": "drop-thumb",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Shows a chip and a card (thumbnail, file name, size, original path) above the prompt for each image dropped onto it. macOS only.",
   "author": {
     "name": "i-noma-ru",
