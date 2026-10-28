@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { abbreviateHome, formatBytes, imageTagsIn, sessionSlug } from './register'
+import { abbreviateHome, chipLabel, chipOffsets, displayWidth, formatBytes, imageTagsIn, sessionSlug } from './register'
 
 test('ホームを ~ に縮める', () => {
   expect(abbreviateHome('/Users/alice/Downloads/a.png', '/Users/alice')).toBe('~/Downloads/a.png')
@@ -27,4 +27,14 @@ test('バイト数の表示', () => {
   expect(formatBytes(84855)).toBe('83 KB')
   expect(formatBytes(1989375)).toBe('1.9 MB')
   expect(formatBytes(512)).toBe('512 B')
+})
+test('表示幅は全角を 2 列と数える', () => {
+  expect(displayWidth('#1 a.png')).toBe(8)
+  expect(displayWidth('#2 写真.jpg')).toBe(11)
+})
+test('カードはそのチップの左端に揃う', () => {
+  const labels = [chipLabel(1, 'a.png'), chipLabel(2, '写真.jpg'), chipLabel(3, null)]
+  expect(labels[2]).toBe('【#3 (pasted image)】')
+  // 【】で 4 列増える: 12 列＋間隔 1 → 13、15 列＋間隔 1 → 29
+  expect(chipOffsets(labels, 1)).toEqual([0, 13, 29])
 })

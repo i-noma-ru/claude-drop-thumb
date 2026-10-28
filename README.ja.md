@@ -1,11 +1,11 @@
 # claude-drop-thumb
 
-ドロップした画像ごとに「#1 ファイル名」のチップをプロンプトの直上に出し、ファイル名・ピクセル寸法・ファイルサイズ・元のパスのカードを開ける Claude Code の mod です。kitty 画像に対応した端末ではサムネイルも出します。
+ドロップした画像ごとに「【#1 ファイル名】」のチップをプロンプトの直上に出し、ファイル名・ピクセル寸法・ファイルサイズ・元のパスのカードを開ける Claude Code の mod です。kitty 画像に対応した端末ではサムネイルも出します。
 `[Image #1]` の表示だけでは何を貼ったか分からないので、クリックかホバー 1 回でファイルの名前と詳細を確かめられます。
 
 [English](README.md)
 
-*A Claude Code mod that shows a chip (`#1 filename`) above the prompt for each dropped image, with a click/hover card (filename, pixel size, bytes, original path, and a thumbnail on kitty-graphics terminals).*
+*A Claude Code mod that shows a chip (`【#1 filename】`) above the prompt for each dropped image, with a click/hover card (filename, pixel size, bytes, original path, and a thumbnail on kitty-graphics terminals).*
 
 ## 使いどころ
 
@@ -24,13 +24,13 @@ Ghostty では、画像をドロップするとチップが出て、ホバーか
 kitty 画像に対応しない端末では、同じカードがサムネイル抜きで表示されます:
 
 ```
-#1 201.jpg
 ╭──────────────────────────────╮
-│  (thumbnail)                 │
+│  #1                          │
 │  201.jpg                     │
 │  500× 500 px · 105 KB        │
 │  ~/Downloads/201.jpg         │
 ╰──────────────────────────────╯
+【#1 201.jpg】
 ❯ [Image #1]
 ```
 
@@ -71,15 +71,16 @@ claude --plugin-dir /path/to/claude-drop-thumb
 | 端末 | チップ・カード | サムネイル |
 | --- | --- | --- |
 | Ghostty, kitty | 表示 | 表示 |
-| それ以外（Terminal.app, iTerm2, Orca など） | 表示 | 非表示（文字情報のみ） |
+| Orca 1.4.229 以降（`CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` を設定） | 表示 | 表示 |
+| それ以外（Terminal.app, iTerm2, 古い Orca など） | 表示 | 非表示（文字情報のみ） |
 
-サムネイルは Claude Code の `Image` 要素で描画します。Claude Code は端末名が `kitty` または `ghostty` の場合だけ画像を描くため、本 mod もその他の端末では画像を表示しません。
-Orca（Electron 製の端末アプリ。xterm.js ベース）は kitty プロトコルの Unicode プレースホルダ方式を解釈しないため、`CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` で強制表示すると表示が崩れます。この変数は使わないほうがよいです。
+サムネイルは Claude Code の `Image` 要素で描画します。Claude Code は、端末名が `kitty` または `ghostty` のとき、または `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` が設定されているときに画像を描きます。本 mod も同じ条件でサムネイルを出します。
+Orca（Electron 製の端末アプリ。xterm.js ベース）は 1.4.229 から kitty の Unicode プレースホルダ方式の画像を描きます（macOS の 1.4.243 で確認）。Orca はタブを切り替えると画像を捨てることがあるため（stablyai/orca#30383）、フラグがあるとき本 mod はサムネイルをファイルで渡し、クリック時と 2 秒ごとに端末に読み直させます。古い Orca ではフラグを設定しないでください（表示が崩れます）。
 
 ## 動作
 
-- 画像をドロップすると、プロンプト直上に `#n ファイル名` のチップが表示されます。
-- チップをクリックするとカードが開き、再度クリックすると閉じます。端末からマウス移動イベントを受け取れる環境では、ホバーでも開きます。
+- 画像をドロップすると、プロンプト直上に `【#n ファイル名】` のチップが表示されます。
+- チップをクリックするとそのチップの上にカードが開き、再度クリックすると閉じます。端末からマウス移動イベントを受け取れる環境では、ホバーでも開きます。チップは常に最下行にあるので、カードの開け閉めで動きません。
 - カードの表示項目: サムネイル（kitty 対応端末のみ）・ファイル名・ピクセル寸法（`幅× 高さ px`）・ファイルサイズ（バイト数）・元ファイルのパス（ホームは `~` に縮めます）。
 - プロンプトを送信するか、`[Image #n]` の文字を消すと、チップとカードは消えます。
 

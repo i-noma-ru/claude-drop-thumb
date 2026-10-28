@@ -6,6 +6,14 @@ import type { Thumb } from '../types'
 const thumbs = atom({ plugin: 'drop-thumb', key: 'thumbs' } as const, [] as Thumb[])
 // クリックで固定表示中のカードの番号（ホバーが届かない端末向け）
 const open = atom({ plugin: 'drop-thumb', key: 'open' } as const, null as number | null)
+// ファイル渡しの Image の generation。増やすと端末がサムネイルを読み直す。
+// Orca はタブを切り替えると受け取った画像を捨てることがあり（stablyai/orca#30383）、
+// Claude Code は同じ画像を送り直さない（key を変えても同じ bytes は送られなかった）。
+const gen = atom({ plugin: 'drop-thumb', key: 'gen' } as const, 0)
+// チップがある間、この間隔で generation を増やし、クリックなしでも絵を戻す
+const REFRESH_MS = 2000
+// チップ同士の間隔（列）
+const CHIP_GAP = 1
 
 // Claude Code は貼り付け・ドロップされた画像を
 // <CLAUDE_CODE_TMPDIR>/<cwd のスラグ>/<セッション id>/images/<n>.png に保存し、
@@ -53,6 +61,36 @@ async function findImagesDir($: EngineInterface, tmp: string, id: string): Promi
     // 読めなければ cwd からの推定に任せる
   }
   return null
+}
+
+// 端末での表示幅（列）。全角（CJK・全角記号など）は 2 列と数える
+export function displayWidth(s: string): number {
+  let w = 0
+  for (const ch of s) {
+    const c = ch.codePointAt(0) ?? 0
+    const wide =
+      (c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) ||
+      (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) ||
+      (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x1f300 && c <= 0x1faff) || (c >= 0x20000 && c <= 0x3fffd)
+    w += wide ? 2 : 1
+  }
+  return w
+}
+
+export function chipLabel(n: number, name: string | null): string {
+  // 【】で囲み、並んだチップの境目を見分けやすくする
+  return `【#${n} ${name ?? '(pasted image)'}】`
+}
+
+// 各チップの左端の列。カードをそのチップの真下に出すのに使う
+export function chipOffsets(labels: string[], gap: number): number[] {
+  const out: number[] = []
+  let x = 0
+  for (const l of labels) {
+    out.push(x)
+    x += displayWidth(l) + gap
+  }
+  return out
 }
 
 export function abbreviateHome(path: string, home: string): string {
@@ -121,7 +159,7 @@ async function makeThumb(
     const { base64 } = await $.fs.read(dest, { as: 'bytes' })
     const path = await findOriginal($, src, bytes, home)
     const name = path ? path.slice(path.lastIndexOf('/') + 1) : null
-    return { n, path, name, png: base64, width, height, bytes }
+    return { n, path, name, png: base64, file: dest, width, height, bytes }
   } catch {
     return null
   }
@@ -174,6 +212,8 @@ function hash(s: string): string {
 export const register: Register = on => {
   let busy = false
   let canDrawImages = false
+  // 強制フラグで描く端末（Orca 等）。ファイル渡しと定期の読み直しはここだけで使う
+  let forced = false
   // カードのパス表示でホームを ~ に縮める（利用者名を画面に出さない）
   let homeDir = ''
 
@@ -183,7 +223,9 @@ export const register: Register = on => {
 
     try {
       const term = ((await $.env.get('TERM_PROGRAM')) ?? '').toLowerCase()
-      canDrawImages = IMAGE_TERMINALS.some(t => term.startsWith(t))
+      // Claude 本体は強制フラグがあれば端末名を問わず描く（Orca 1.4.229 以降はこれで絵が出る）
+      forced = (await $.env.get('CLAUDE_CODE_FORCE_TERMINAL_IMAGES')) === '1'
+      canDrawImages = forced || IMAGE_TERMINALS.some(t => term.startsWith(t))
 
       // 既定は /tmp/claude-<uid>（Orca は CLAUDE_CODE_TMPDIR で同じ場所を渡してくる）
       let tmp = await $.env.get('CLAUDE_CODE_TMPDIR')
@@ -212,6 +254,15 @@ export const register: Register = on => {
             busy = false
           })
       })
+
+      // 定期の読み直し（ちらつくならこのブロックごと消せばクリック時だけになる）
+      if (forced) {
+        $.clock.every(REFRESH_MS, () => {
+          void read($, thumbs)
+            .then(list => (list.length > 0 ? update($, gen, g => g + 1) : undefined))
+            .catch(() => {})
+        })
+      }
     } catch {
       // 置き場が分からなければ何もしない
     }
@@ -222,6 +273,7 @@ export const register: Register = on => {
     // 送信は止めない: 片付けに失敗しても next へ進む
     await update($, thumbs, () => []).catch(() => {})
     await update($, open, () => null).catch(() => {})
+    await update($, gen, () => 0).catch(() => {})
     return next(e)
   })
 
@@ -234,30 +286,27 @@ export const register: Register = on => {
     const ui = $.ui.resolve(e)
     const { Box, Button, Text } = ui
     const Image = 'Image' in ui && canDrawImages ? ui.Image : null
-    const maxRows = Math.max(1, Math.min(10, e.props.maxRows - 3))
+    // 絵以外の行（#番号・名前・寸法・パス・枠の上下・チップ行）が 7 行。
+    // 帯に収まらないと下の行から切れるので、チップ行が残るように絵の行数を抑える
+    const maxRows = Math.max(1, Math.min(10, e.props.maxRows - 7))
     const opened = await read($, open)
+    const generation = await read($, gen)
+    const labels = list.map(t => chipLabel(t.n, t.name))
+    const offsets = chipOffsets(labels, CHIP_GAP)
+    // カード（枠 2 列＋余白 2 列＋絵）が右端からはみ出さない範囲で、チップの真上に寄せる
+    const cardWidth = COLUMNS + 4
+    const width = e.props.bodyColumns
 
-    // 1 行目: チップの列（クリックでカードを固定／解除）。2 行目以降: カード。
+    // 上: カード。最下行: チップの列（クリックでカードを固定／解除）。
+    // 帯はプロンプトの上に下揃えなので、カードの出入りでチップ行は動かない。
     // カードは帯の中（流れの中）に出す。帯の外（上）に置くと領域で切り取られて見えない。
     return (
       <Box flexDirection="column">
-        <Box>
-          {list.map(t => (
-            <Box key={`chip${t.n}`} marginRight={2}>
-              <Button
-                plain
-                dimColor={opened !== t.n}
-                label={`#${t.n} ${t.name ?? '(pasted image)'}`}
-                hover={{ scope: `card${t.n}` }}
-                onPress={() => update($, open, prev => (prev === t.n ? null : t.n))}
-              />
-            </Box>
-          ))}
-        </Box>
-        {list.map(t => {
+        {list.map((t, i) => {
           const rows = Math.max(1, Math.min(maxRows, Math.ceil((COLUMNS * t.height * CELL_ASPECT) / t.width)))
           const label = t.name ?? '(pasted image)'
           const pinned = opened === t.n
+          const left = Math.max(0, Math.min(offsets[i], width - cardWidth - 1))
           return (
             <Box
               key={`card${t.n}`}
@@ -265,12 +314,20 @@ export const register: Register = on => {
               hover={{ scope: `card${t.n}`, display: 'flex' }}
               flexDirection="column"
               alignSelf="flex-start"
+              marginLeft={left}
               borderStyle="round"
               borderDimColor
               paddingX={1}
             >
+              <Text bold color="cyan">#{t.n}</Text>
               {Image ? (
-                <Image key={`img${t.n}`} source={{ png: t.png }} columns={COLUMNS} rows={rows} alt={label} />
+                <Image
+                  key={`img${t.n}`}
+                  source={forced ? { file: t.file, format: 'png', generation } : { png: t.png }}
+                  columns={COLUMNS}
+                  rows={rows}
+                  alt={label}
+                />
               ) : null}
               <Text>{label}</Text>
               <Text dimColor>
@@ -280,6 +337,22 @@ export const register: Register = on => {
             </Box>
           )
         })}
+        <Box>
+          {list.map((t, i) => (
+            <Box key={`chip${t.n}`} marginRight={CHIP_GAP}>
+              <Button
+                plain
+                dimColor={opened !== t.n}
+                label={labels[i]}
+                hover={{ scope: `card${t.n}` }}
+                onPress={async () => {
+                  await update($, gen, g => g + 1)
+                  await update($, open, prev => (prev === t.n ? null : t.n))
+                }}
+              />
+            </Box>
+          ))}
+        </Box>
       </Box>
     )
   })

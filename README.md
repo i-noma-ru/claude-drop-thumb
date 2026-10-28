@@ -1,6 +1,6 @@
 # claude-drop-thumb
 
-A Claude Code mod that shows a `#1 filename` chip above the prompt for each dropped image, with a card (filename, pixel size, bytes, original path) and, on kitty-graphics terminals, a thumbnail.
+A Claude Code mod that shows a `【#1 filename】` chip above the prompt for each dropped image, with a card (filename, pixel size, bytes, original path) and, on kitty-graphics terminals, a thumbnail.
 The `[Image #1]` marker alone doesn't tell you what you pasted, so this mod puts the file's name and details one click or hover away.
 
 [日本語](README.ja.md)
@@ -22,13 +22,13 @@ In Ghostty, dropping an image shows the chip; hovering over or clicking it opens
 On terminals without kitty graphics, the same card appears without the thumbnail:
 
 ```
-#1 201.jpg
 ╭──────────────────────────────╮
-│  (thumbnail)                 │
+│  #1                          │
 │  201.jpg                     │
 │  500× 500 px · 105 KB        │
 │  ~/Downloads/201.jpg         │
 ╰──────────────────────────────╯
+【#1 201.jpg】
 ❯ [Image #1]
 ```
 
@@ -69,15 +69,16 @@ Takes effect starting from the next Claude Code launch.
 | Terminal | Chip / Card | Thumbnail |
 | --- | --- | --- |
 | Ghostty, kitty | Shown | Shown |
-| Others (Terminal.app, iTerm2, Orca, etc.) | Shown | Not shown (text info only) |
+| Orca 1.4.229 or later, with `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` | Shown | Shown |
+| Others (Terminal.app, iTerm2, older Orca, etc.) | Shown | Not shown (text info only) |
 
-Thumbnails are rendered using Claude Code's `Image` element. Because Claude Code renders images only when the terminal name is `kitty` or `ghostty`, this mod is designed not to display images on other terminals.
-Orca (an Electron-based terminal app built on xterm.js) does not interpret the kitty protocol's Unicode placeholder method, so forcing images via `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` will result in broken rendering. Not recommended.
+Thumbnails are rendered using Claude Code's `Image` element. Claude Code renders images when the terminal name is `kitty` or `ghostty`, or on any terminal when `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` is set; this mod draws thumbnails under the same conditions.
+Orca (an Electron-based terminal app built on xterm.js) renders kitty Unicode-placeholder images from 1.4.229 (checked on 1.4.243, macOS). Orca can drop images after a tab switch (stablyai/orca#30383), so with the flag set this mod passes the thumbnail as a file and asks the terminal to re-read it on click and every 2 seconds. Do not set the flag on older Orca: the rendering breaks.
 
 ## Behavior
 
-- Dropping an image displays `#n filename` chips right above the prompt.
-- Clicking a chip opens the card, and clicking again closes it. It also opens on hover in environments where the terminal passes mouse movement events.
+- Dropping an image displays `【#n filename】` chips right above the prompt.
+- Clicking a chip opens its card above the chip, and clicking again closes it. It also opens on hover in environments where the terminal passes mouse movement events. The chips stay on the bottom row, so they do not move when a card opens or closes.
 - Card contents: Thumbnail (kitty-compatible terminals only), filename, `width× height px`, file size in bytes, and the path of the original file (the home directory is shown as `~`).
 - Submitting the prompt or deleting the `[Image #n]` marker removes the chips and card.
 

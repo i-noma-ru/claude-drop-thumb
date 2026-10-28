@@ -4,6 +4,8 @@ export type Thumb = {
   path: string | null
   name: string | null
   png: string
+  /** サムネイル PNG のパス（強制フラグの端末ではファイルとして渡す） */
+  file: string
   width: number
   height: number
   bytes: number
@@ -11,6 +13,6 @@ export type Thumb = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'drop-thumb': { thumbs: Thumb[]; open: number | null }
+    'drop-thumb': { thumbs: Thumb[]; open: number | null; gen: number }
   }
 }
