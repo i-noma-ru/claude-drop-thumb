@@ -13,7 +13,7 @@
 - ドロップした画像の寸法・ファイルサイズ・元のパスを、プロンプト欄から離れずに確かめたいとき。
 - Ghostty か kitty を使っていて、ドロップした画像のサムネイルをプロンプトの直上で見たいとき。
 
-向かないとき: Linux / Windows で使う場合（本 mod は macOS のツール `sips`・`mdfind`・`cmp` を使います）、または Claude Code が v2.1.287 より古い場合。
+向かないとき: Linux で使う場合（未確認）、または Claude Code が v2.1.287 より古い場合。Windows ではチップとカードは出ますが、サムネイルは出ません（縮小に macOS の `sips` を使うため）。
 
 ## 動くとこう見える
 
@@ -64,7 +64,7 @@ claude --plugin-dir /path/to/claude-drop-thumb
 ## 動作要件
 
 - Claude Code v2.1.287 以降（mods 対応。mod は Claude Code のプラグインの一形態で、コマンドや設定では `plugin` と表記されます）
-- macOS（`sips`・`mdfind`・`cmp` を使用するため。Linux / Windows は未対応）
+- macOS または Windows。Windows ではチップとカードだけが出ます。サムネイルの縮小に macOS の `sips` を使うためです。Linux は未確認です。
 
 ## 対応端末
 
@@ -73,6 +73,7 @@ claude --plugin-dir /path/to/claude-drop-thumb
 | Ghostty, kitty | 表示 | 表示 |
 | Orca 1.4.229 以降（`CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` を設定） | 表示 | 表示 |
 | それ以外（Terminal.app, iTerm2, 古い Orca など） | 表示 | 非表示（文字情報のみ） |
+| Windows の端末（Orca を含む） | 表示 | 非表示（文字情報のみ） |
 
 サムネイルは Claude Code の `Image` 要素で描画します。Claude Code は、端末名が `kitty` または `ghostty` のとき、または `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` が設定されているときに画像を描きます。本 mod も同じ条件でサムネイルを出します。
 Orca（Electron 製の端末アプリ。xterm.js ベース）は 1.4.229 から kitty の Unicode プレースホルダ方式の画像を描きます（macOS の 1.4.243 で確認）。Orca はタブを切り替えると画像を捨てることがあるため（stablyai/orca#30383）、フラグがあるとき本 mod はサムネイルをファイルで渡し、クリック時と 2 秒ごとに端末に読み直させます。古い Orca ではフラグを設定しないでください（表示が崩れます）。
@@ -91,24 +92,31 @@ Claude Code 本体がプロンプトで「画像」として受け付ける拡�
 
 ## 仕組み
 
-1. Claude Code はドロップされた画像を一時フォルダ `<CLAUDE_CODE_TMPDIR または /tmp/claude-<uid>>/<プロジェクト>/<セッション id>/images/<n>.<拡張子>` に保存し、プロンプトには `[Image #n]` の文字だけを置きます。ドロップ操作では編集イベントが発生しないため、本 mod は 200 ms ごとにプロンプト欄をポーリングして `[Image #n]` を検知します。
-2. 検知した画像を `sips`（macOS 標準）で 512 px の PNG に縮小し、base64 エンコードして `Image` 要素に渡します。
-3. 保存された画像は元ファイルと同一のバイト列であるため、Spotlight（`mdfind`）で同一ファイルサイズの候補を検索し、`cmp` で内容を比較して元のパスを特定します。Spotlight が利用できない環境では、`~/Downloads`、`~/Desktop`、`~/Pictures`、`~/Documents` を `find` で探します。
+1. Claude Code はドロップされた画像を一時フォルダ `<一時フォルダ>/<プロジェクト>/<セッション id>/images/<n>.<拡張子>` に保存し、プロンプトには `[Image #n]` の文字だけを置きます。一時フォルダは `CLAUDE_CODE_TMPDIR`、無ければ macOS は `/tmp/claude-<uid>`、Windows は `%TEMP%\claude` です（Windows は 2.1.312 で確認）。ドロップ操作では編集イベントが発生しないため、本 mod は 200 ms ごとにプロンプト欄をポーリングして `[Image #n]` を検知します。
+2. ピクセル寸法は画像ファイルの先頭のバイト（PNG・JPEG・GIF・WebP・BMP のヘッダー）から読みます。サムネイルを描ける端末では、`sips`（macOS 標準）で 512 px の PNG に縮小し、`Image` 要素に渡します。
+3. 保存された画像は元ファイルと同一のバイト列であるため、同じファイルサイズの候補を探し、中身を比べて元のパスを特定します。macOS では Spotlight（`mdfind`）で探し、見つからないときや Windows では、ホームの `Downloads`・`Desktop`・`Pictures`・`Documents` を 2 階層まで見ます。
 
 ## 実行するもの・読むもの・書くもの・送るもの
 
 審査のために、このプラグインが実行・参照するものを全部挙げます。マシンの外へは何も出ず、プロンプトの送信や書き換えもしません。
 
-**実行するコマンド（すべて macOS 標準。引数は固定で、渡すのはローカルのパスだけ）:**
+**実行するコマンド:** すべて macOS 標準で、引数は固定です。渡すのはローカルのパスだけです。Windows では起動に失敗し、使わずに進みます。
 
-- `id -u` — `CLAUDE_CODE_TMPDIR` が無いときだけ。`/tmp/claude-<uid>` のパスを組むため。
-- `mkdir -m 700 -p <thumbDir>` と `test -d <thumbDir> -a ! -L <thumbDir>` — 所有者専用のサムネイル置き場を作って確かめる。
-- `sips -s format png -Z 512 <画像> --out <サムネイル>` と `sips -g pixelWidth -g pixelHeight <画像>` — 縮小と寸法の取得。
+- `id -u` — `CLAUDE_CODE_TMPDIR` も `%TEMP%\claude` も無いときだけ。`/tmp/claude-<uid>` のパスを組むため。
+- `mkdir -m 700 -p <thumbDir>` と `test -d <thumbDir> -a ! -L <thumbDir>` — サムネイルを描ける端末のときだけ。所有者専用のサムネイル置き場を作って確かめる。
+- `sips -s format png -Z 512 <画像> --out <サムネイル>` — サムネイルを描ける端末のときだけ。縮小。
+- `sips -g pixelWidth -g pixelHeight <画像>` — 4 MiB を超える画像の寸法を聞くときだけ（MOD から読めるファイルは 4 MiB まで）。
 - `mdfind "kMDItemFSSize == <バイト数>"` — 同じサイズのファイルを Spotlight に聞く（3 秒で打ち切り）。
-- `find ~/Downloads ~/Desktop ~/Pictures ~/Documents -maxdepth 2 -type f -size <バイト数>c` — Spotlight で見つからないときの予備（3 秒で打ち切り）。
-- `cmp -s <一時ファイル> <候補>` — 中身の比較。候補は最大 5 件。
+- `cmp -s <一時ファイル> <候補>` — 4 MiB を超える画像の中身の比較だけ。候補は最大 5 件。
 
-**読むもの:** プロンプト欄の文字（`[Image #n]` を探すため）、Claude Code の一時フォルダにあるドロップ画像、自分が書いたサムネイル、環境変数 `CLAUDE_CODE_TMPDIR`・`HOME`・`TERM_PROGRAM`。`cmp` の段階で、同じサイズの候補ファイル最大 5 件の中身を読みます。
+**読むもの:**
+
+- プロンプト欄の文字（`[Image #n]` を探すため）
+- Claude Code の一時フォルダにあるドロップ画像
+- 自分が書いたサムネイル
+- ホームの `Downloads`・`Desktop`・`Pictures`・`Documents` の 2 階層までの一覧（Spotlight で見つからないとき）
+- 環境変数 `CLAUDE_CODE_TMPDIR`・`TEMP`・`USERPROFILE`・`HOME`・`TERM_PROGRAM`・`CLAUDE_CODE_FORCE_TERMINAL_IMAGES`
+- 同じサイズの候補ファイル最大 5 件の中身（元ファイルを確かめるため）
 
 **書くもの:** Claude Code のユーザー固有一時フォルダ内の `drop-thumb/`（`0700`）に置く 512 px の PNG サムネイルだけ。
 
@@ -123,6 +131,7 @@ Claude Code 本体がプロンプトで「画像」として受け付ける拡�
 - クリップボードから直接貼り付けた画像には元ファイルが無いので、チップには `(pasted image)` と出ます。
 - サムネイルの行数はセルの縦横比を 0.45 と仮定して算出するため、端末やフォント環境によって上下に余白が生じることがあります。
 - 同一サイズのファイルが複数存在する場合は、内容が一致した最初の 1 件を元ファイルと判定します。
+- Windows では、4 MiB を超える画像の寸法と元ファイル名は出ません（チップは `(pasted image)`）。MOD から読めるファイルは 4 MiB までで、寸法を聞く `sips` も中身を比べる `cmp` も無いためです。
 
 ## 開発
 
